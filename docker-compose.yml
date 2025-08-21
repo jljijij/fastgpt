@@ -1,0 +1,76 @@
+version: '3.9'
+services:
+  fastgpt:
+    build: .
+    ports:
+      - "28001:3000"
+    environment:
+      MONGODB_URI: mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin
+      MILVUS_ADDRESS: http://milvusStandalone:19530
+      MILVUS_TOKEN: none
+      REDIS_URL: redis://default:mypassword@redis:6379
+    depends_on:
+      - milvusStandalone
+      - mongo
+      - redis
+    networks:
+      - fastgpt
+  milvus-minio:
+    image: docker.1ms.run/minio/minio:RELEASE.2023-03-20T20-16-18Z
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    command: minio server /minio_data --console-address ":9001"
+    volumes:
+      - ./_data/milvus-minio:/minio_data
+    networks:
+      - fastgpt
+  milvusEtcd:
+    image: qdocker.1ms.run/coreos/etcd:v3.5.5
+    environment:
+      ETCD_AUTO_COMPACTION_MODE: revision
+      ETCD_AUTO_COMPACTION_RETENTION: "1000"
+      ETCD_QUOTA_BACKEND_BYTES: "4294967296"
+      ETCD_SNAPSHOT_COUNT: "50000"
+    command: >
+      etcd -advertise-client-urls=http://127.0.0.1:2379 \
+      -listen-client-urls http://0.0.0.0:2379 \
+      --data-dir /etcd
+    volumes:
+      - ./_data/milvus-etcd:/etcd
+    networks:
+      - fastgpt
+  milvusStandalone:
+    image: docker.1ms.run/milvusdb/milvus:v2.4.3
+    command: ["milvus", "run", "standalone"]
+    environment:
+      ETCD_ENDPOINTS: milvusEtcd:2379
+      MINIO_ADDRESS: milvus-minio:9000
+    depends_on:
+      - milvusEtcd
+      - milvus-minio
+    volumes:
+      - ./_data/milvus-data:/var/lib/milvus
+    networks:
+      - fastgpt
+  mongo:
+    image: docker.1ms.run/library/mongo:5.0.18
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: myusername
+      MONGO_INITDB_ROOT_PASSWORD: mypassword
+    volumes:
+      - ./_data/mongo:/data/db
+    networks:
+      - fastgpt
+  redis:
+    image: docker.1ms.run/library/redis:7.2-alpine
+    command: redis-server --requirepass mypassword
+    volumes:
+      - ./_data/redis:/data
+    networks:
+      - fastgpt
+
+networks:
+  fastgpt:
+    driver: bridge
+    internal: true

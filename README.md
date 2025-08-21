@@ -195,6 +195,16 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
   </table>
 </a>
 
+## Docker Compose 部署
+
+项目提供了基于 Milvus 的 `docker-compose.yml`，其中 FastGPT 服务会映射到本机的 `28001` 端口并通过 `MILVUS_ADDRESS` 连接 Milvus。
+
+```bash
+docker compose up -d
+```
+
+启动后访问 <http://localhost:28001> 即可。
+
 ## 🌟 Star History
 
 <a href="https://github.com/labring/FastGPT/stargazers" target="_blank" style="display: block" align="center">
