@@ -2,6 +2,8 @@ version: '3.9'
 services:
   fastgpt:
     build: .
+    ports:
+      - "28001:3000"
     environment:
       MONGODB_URI: mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin
       MILVUS_ADDRESS: http://milvusStandalone:19530
