@@ -1,0 +1,38 @@
+version: '3.9'
+services:
+  fastgpt:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      MONGODB_URI: mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin
+      PG_URL: postgresql://username:password@pg:5432/postgres
+      REDIS_URL: redis://default:mypassword@redis:6379
+    depends_on:
+      - pg
+      - mongo
+      - redis
+  pg:
+    image: pgvector/pgvector:0.8.0-pg15
+    environment:
+      POSTGRES_USER: username
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+  mongo:
+    image: mongo:5.0.18
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: myusername
+      MONGO_INITDB_ROOT_PASSWORD: mypassword
+    volumes:
+      - mongodata:/data/db
+  redis:
+    image: redis:7.2-alpine
+    command: redis-server --requirepass mypassword
+    volumes:
+      - redisdata:/data
+volumes:
+  pgdata:
+  mongodata:
+  redisdata:
