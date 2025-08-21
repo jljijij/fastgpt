@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # Build stage
-FROM hub.1ms.run/library/node:20 AS builder
+FROM docker.1ms.run/library/node:20 AS builder
 WORKDIR /app
 
 # Enable pnpm via corepack
@@ -19,7 +19,7 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm --filter app build
 
 # Production image
-FROM hub.1ms.run/library/node:20-alpine AS runner
+FROM docker.1ms.run/library/node:20-alpine AS runner
 WORKDIR /app
 RUN corepack enable
 
@@ -27,6 +27,5 @@ RUN corepack enable
 COPY --from=builder /app /app
 
 ENV NODE_ENV=production
-EXPOSE 3000
 
 CMD ["pnpm", "--filter", "app", "start"]

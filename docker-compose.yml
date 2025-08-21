@@ -2,8 +2,6 @@ version: '3.9'
 services:
   fastgpt:
     build: .
-    ports:
-      - "3000:3000"
     environment:
       MONGODB_URI: mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin
       MILVUS_ADDRESS: http://milvusStandalone:19530
@@ -13,16 +11,20 @@ services:
       - milvusStandalone
       - mongo
       - redis
+    networks:
+      - fastgpt
   milvus-minio:
-    image: hub.1ms.run/minio/minio:RELEASE.2023-03-20T20-16-18Z
+    image: docker.1ms.run/minio/minio:RELEASE.2023-03-20T20-16-18Z
     environment:
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
     command: minio server /minio_data --console-address ":9001"
     volumes:
-      - milvus-minio:/minio_data
+      - ./_data/milvus-minio:/minio_data
+    networks:
+      - fastgpt
   milvusEtcd:
-    image: quay.1ms.run/coreos/etcd:v3.5.5
+    image: qdocker.1ms.run/coreos/etcd:v3.5.5
     environment:
       ETCD_AUTO_COMPACTION_MODE: revision
       ETCD_AUTO_COMPACTION_RETENTION: "1000"
@@ -33,9 +35,11 @@ services:
       -listen-client-urls http://0.0.0.0:2379 \
       --data-dir /etcd
     volumes:
-      - milvus-etcd:/etcd
+      - ./_data/milvus-etcd:/etcd
+    networks:
+      - fastgpt
   milvusStandalone:
-    image: hub.1ms.run/milvusdb/milvus:v2.4.3
+    image: docker.1ms.run/milvusdb/milvus:v2.4.3
     command: ["milvus", "run", "standalone"]
     environment:
       ETCD_ENDPOINTS: milvusEtcd:2379
@@ -44,22 +48,27 @@ services:
       - milvusEtcd
       - milvus-minio
     volumes:
-      - milvus-data:/var/lib/milvus
+      - ./_data/milvus-data:/var/lib/milvus
+    networks:
+      - fastgpt
   mongo:
-    image: hub.1ms.run/library/mongo:5.0.18
+    image: docker.1ms.run/library/mongo:5.0.18
     environment:
       MONGO_INITDB_ROOT_USERNAME: myusername
       MONGO_INITDB_ROOT_PASSWORD: mypassword
     volumes:
-      - mongodata:/data/db
+      - ./_data/mongo:/data/db
+    networks:
+      - fastgpt
   redis:
-    image: hub.1ms.run/library/redis:7.2-alpine
+    image: docker.1ms.run/library/redis:7.2-alpine
     command: redis-server --requirepass mypassword
     volumes:
-      - redisdata:/data
-volumes:
-  milvus-data:
-  milvus-etcd:
-  milvus-minio:
-  mongodata:
-  redisdata:
+      - ./_data/redis:/data
+    networks:
+      - fastgpt
+
+networks:
+  fastgpt:
+    driver: bridge
+    internal: true
