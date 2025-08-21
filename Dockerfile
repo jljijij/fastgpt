@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # Build stage
-FROM node:20 AS builder
+FROM hub.1ms.run/library/node:20 AS builder
 WORKDIR /app
 
 # Enable pnpm via corepack
@@ -19,7 +19,7 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm --filter app build
 
 # Production image
-FROM node:20-alpine AS runner
+FROM hub.1ms.run/library/node:20-alpine AS runner
 WORKDIR /app
 RUN corepack enable
 

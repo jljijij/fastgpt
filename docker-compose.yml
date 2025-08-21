@@ -6,33 +6,60 @@ services:
       - "3000:3000"
     environment:
       MONGODB_URI: mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin
-      PG_URL: postgresql://username:password@pg:5432/postgres
+      MILVUS_ADDRESS: http://milvusStandalone:19530
+      MILVUS_TOKEN: none
       REDIS_URL: redis://default:mypassword@redis:6379
     depends_on:
-      - pg
+      - milvusStandalone
       - mongo
       - redis
-  pg:
-    image: pgvector/pgvector:0.8.0-pg15
+  milvus-minio:
+    image: hub.1ms.run/minio/minio:RELEASE.2023-03-20T20-16-18Z
     environment:
-      POSTGRES_USER: username
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: postgres
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    command: minio server /minio_data --console-address ":9001"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - milvus-minio:/minio_data
+  milvusEtcd:
+    image: quay.1ms.run/coreos/etcd:v3.5.5
+    environment:
+      ETCD_AUTO_COMPACTION_MODE: revision
+      ETCD_AUTO_COMPACTION_RETENTION: "1000"
+      ETCD_QUOTA_BACKEND_BYTES: "4294967296"
+      ETCD_SNAPSHOT_COUNT: "50000"
+    command: >
+      etcd -advertise-client-urls=http://127.0.0.1:2379 \
+      -listen-client-urls http://0.0.0.0:2379 \
+      --data-dir /etcd
+    volumes:
+      - milvus-etcd:/etcd
+  milvusStandalone:
+    image: hub.1ms.run/milvusdb/milvus:v2.4.3
+    command: ["milvus", "run", "standalone"]
+    environment:
+      ETCD_ENDPOINTS: milvusEtcd:2379
+      MINIO_ADDRESS: milvus-minio:9000
+    depends_on:
+      - milvusEtcd
+      - milvus-minio
+    volumes:
+      - milvus-data:/var/lib/milvus
   mongo:
-    image: mongo:5.0.18
+    image: hub.1ms.run/library/mongo:5.0.18
     environment:
       MONGO_INITDB_ROOT_USERNAME: myusername
       MONGO_INITDB_ROOT_PASSWORD: mypassword
     volumes:
       - mongodata:/data/db
   redis:
-    image: redis:7.2-alpine
+    image: hub.1ms.run/library/redis:7.2-alpine
     command: redis-server --requirepass mypassword
     volumes:
       - redisdata:/data
 volumes:
-  pgdata:
+  milvus-data:
+  milvus-etcd:
+  milvus-minio:
   mongodata:
   redisdata:
