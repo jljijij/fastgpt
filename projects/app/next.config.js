@@ -71,7 +71,7 @@ const nextConfig = {
 
     if (isServer) {
       config.externals.push('@node-rs/jieba');
-
+      config.externals.push('@zilliz/milvus2-sdk-node');
       if (nextRuntime === 'nodejs') {
         const oldEntry = config.entry;
         config = {
