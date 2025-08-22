@@ -39,6 +39,8 @@ RUN pnpm config set registry https://registry.npmmirror.com \
 
 RUN mkdir -p projects/app/.next/proto && \
     cp -r node_modules/.pnpm/@zilliz+milvus2-sdk-node@*/node_modules/@zilliz/milvus2-sdk-node/dist/proto/proto projects/app/.next/proto/
+RUN mkdir -p /app/data && \
+    cp projects/app/data/config.json /app/data/config.json
 ############################
 # Production image
 ############################
@@ -54,4 +56,6 @@ RUN corepack disable && npm i -g pnpm@9.15.9 \
 COPY --from=builder /app /app
 
 ENV NODE_ENV=production
+ENV CONFIG_JSON_PATH=/app/projects/app/data
+ENV PLUGIN_BASE_URL=http://fastgpt-plugin:3000
 CMD ["pnpm", "--filter", "app", "start"]

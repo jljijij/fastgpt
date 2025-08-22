@@ -9,10 +9,15 @@ services:
       MILVUS_ADDRESS: http://milvusStandalone:19530
       MILVUS_TOKEN: none
       REDIS_URL: redis://default:mypassword@redis:6379
+      PLUGIN_BASE_URL: http://fastgpt-plugin:3000
+      PLUGIN_TOKEN: plugin_token
+    volumes:
+      - ./projects/app/data/config.json:/app/data/config.json
     depends_on:
       - milvusStandalone
       - mongo
       - redis
+      - fastgpt-plugin
     networks:
       - fastgpt
 
@@ -70,12 +75,49 @@ services:
       - fastgpt
 
   redis:
-    image: docker.1ms.run/redis:7-alpine 
+    image: docker.1ms.run/redis:7-alpine
     command: redis-server --requirepass mypassword
     volumes:
       - ./_data/redis:/data
     networks:
       - fastgpt
+
+  fastgpt-minio:
+    image: docker.1ms.run/minio/minio:RELEASE.2025-06-13T11-33-47Z-cpuv1
+    container_name: fastgpt-minio
+    restart: always
+    networks:
+      - fastgpt
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - ./_data/fastgpt-minio:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+
+  fastgpt-plugin:
+    image: ghcr.io/labring/fastgpt-plugin:v0.1.10
+    container_name: fastgpt-plugin
+    restart: always
+    networks:
+      - fastgpt
+    environment:
+      AUTH_TOKEN: plugin_token
+      MINIO_ENDPOINT: fastgpt-minio
+      MINIO_PORT: 9000
+      MINIO_USE_SSL: "false"
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: fastgpt-plugins
+    depends_on:
+      - fastgpt-minio
 
 networks:
   fastgpt:
